@@ -10,7 +10,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic -Wall -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 
-#set(IGL_INCLUDE_DIRS "/home/donglaix/tools/libigl/include/")
 set(IGL_INCLUDE_DIRS "/opt/libigl/include")
 include_directories(${IGL_INCLUDE_DIRS})
 find_package(OpenCV 3.3 REQUIRED)
@@ -29,7 +28,7 @@ find_package(Boost COMPONENTS system filesystem REQUIRED)
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
-find_package(GFlags REQUIRED)
+set(GFLAGS_INCLUDE_DIR /usr/lib/x86_64-linux-gnu)
 
 file(GLOB JSON_SOURCES "src/lib_json/*.cpp")
 file(GLOB SOURCES "src/*.cpp")
