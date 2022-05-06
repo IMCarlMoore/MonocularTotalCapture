@@ -2,7 +2,7 @@
 #define SIMPLE_H
 
 #include <Eigen/Sparse>
-#include "cv.h"
+#include "opencv/cv.h"
 #include <vector>
 #include <utility>
 

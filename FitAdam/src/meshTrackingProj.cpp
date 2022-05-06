@@ -1,7 +1,11 @@
 #include "meshTrackingProj.h"
 #include <random>
 #include <algorithm>
-#include "opencv2/gpu/gpu.hpp"
+#include "opencv2/core/cuda.hpp"
+#include "opencv2/cudaarithm.hpp"
+#include "opencv2/cudaoptflow.hpp"
+#include <opencv2/core/utility.hpp>
+#include "opencv2/core.hpp"
 // #define VISUALIZE_TRACKING
 
 const float depthThresh = 1e-2;  // threshold for determining visibility
@@ -45,7 +49,7 @@ const uint sample_dist)  // If sample_dist > 0, only return 1 constraint in ever
     {
         // use Brox optical flow
         // compute optical from from virtual Image to the target Img
-        cv::gpu::GpuMat frame0(sourceImg), frame1(targetImg);
+        cv::cuda::GpuMat frame0(sourceImg), frame1(targetImg);
         frame0.convertTo(frame0, CV_32F, 1.0 / 255.0);
         frame1.convertTo(frame1, CV_32F, 1.0 / 255.0);
         const double brox_alpha = 0.197;
@@ -54,13 +58,13 @@ const uint sample_dist)  // If sample_dist > 0, only return 1 constraint in ever
         const int brox_inner = 10;
         const int brox_outer = 70;
         const int brox_solver = 10;
-        cv::gpu::BroxOpticalFlow brox_flow(brox_alpha, brox_gamma, brox_scale, brox_inner, brox_outer, brox_solver);
+        cv::Ptr<cv::cuda::BroxOpticalFlow> brox_flow = cv::cuda::BroxOpticalFlow::create(brox_alpha, brox_gamma, brox_scale, brox_inner, brox_outer, brox_solver);
 
-        cv::gpu::GpuMat cuda_fu, cuda_fv, cuda_bu, cuda_bv;
-        brox_flow(frame0, frame1, cuda_fu, cuda_fv);
-        brox_flow(frame1, frame0, cuda_bu, cuda_bv);
-        cv::Mat fu(cuda_fu), fv(cuda_fv), bu(cuda_bu), bv(cuda_bv);
-
+        cv::cuda::GpuMat cudafflow, cudabflow;
+        brox_flow->calc(frame0, frame1, cudafflow);
+        brox_flow->calc(frame1, frame0, cudabflow);
+        cv::Mat fflow(cudafflow), bflow(cudabflow);
+        
         cv::Mat cover;
         if (sample_dist > 0)
         {
@@ -71,12 +75,20 @@ const uint sample_dist)  // If sample_dist > 0, only return 1 constraint in ever
         {
             const int x = round(pt2d_source[iv2].x);
             const int y = round(pt2d_source[iv2].y);
-            const int dest_x = round(x + fu.at<float>(y, x));
-            const int dest_y = round(y + fv.at<float>(y, x));
+            //const int dest_x = round(x + fu.at<float>(y, x));
+            //const int dest_y = round(y + fv.at<float>(y, x));
+            const cv::Point2f fflowatxy = fflow.at<cv::Point2f>(y, x);            
+            const int dest_x = round(x + fflowatxy.x);
+            const int dest_y = round(y + fflowatxy.y);            
+
+            
             if (dest_x < 0 || dest_x >= 1920 || dest_y < 0 || dest_y >= 1080)
                 continue;
-            const int back_x = dest_x + round(bu.at<float>(dest_y, dest_x));
-            const int back_y = dest_y + round(bv.at<float>(dest_y, dest_x));
+            //const int back_x = dest_x + round(bu.at<float>(dest_y, dest_x));
+            //const int back_y = dest_y + round(bv.at<float>(dest_y, dest_x));
+            const cv::Point2f bflowatxy = bflow.at<cv::Point2f>(y, x);                  
+            const int back_x = dest_x + round(bflowatxy.x);
+            const int back_y = dest_y + round(bflowatxy.y);
             const float dist = sqrt((x - back_x) * (x - back_x) + (y - back_y) * (y - back_y));
             if (dist > backward_check_thresh)
                 continue;
@@ -373,7 +385,7 @@ const uint sample_dist)
 #endif
 
     // compute optical from from virtual Image to the target Img
-    cv::gpu::GpuMat frame0(resultImg), frame1(targetImg);
+    cv::cuda::GpuMat frame0(resultImg), frame1(targetImg);
     frame0.convertTo(frame0, CV_32F, 1.0 / 255.0);
     frame1.convertTo(frame1, CV_32F, 1.0 / 255.0);
     const double brox_alpha = 0.197;
@@ -382,25 +394,27 @@ const uint sample_dist)
     const int brox_inner = 10;
     const int brox_outer = 70;
     const int brox_solver = 10;
-    cv::gpu::BroxOpticalFlow brox_flow(brox_alpha, brox_gamma, brox_scale, brox_inner, brox_outer, brox_solver);
+    cv::Ptr<cv::cuda::BroxOpticalFlow> brox_flow = cv::cuda::BroxOpticalFlow::create(brox_alpha, brox_gamma, brox_scale, brox_inner, brox_outer, brox_solver);
 
-    cv::gpu::GpuMat cuda_fu, cuda_fv, cuda_bu, cuda_bv;
-    brox_flow(frame0, frame1, cuda_fu, cuda_fv);
-    brox_flow(frame1, frame0, cuda_bu, cuda_bv);
+    cv::cuda::GpuMat cuda_fflow, cuda_bflow;
+    brox_flow->calc(frame0, frame1, cuda_fflow);
+    brox_flow->calc(frame1, frame0, cuda_bflow);
 
-    cv::Mat fu(cuda_fu), fv(cuda_fv), bu(cuda_bu), bv(cuda_bv);
+    cv::Mat fflow(cuda_fflow), bflow(cuda_bflow);
     cv::Mat warped(1080, 1920, CV_8UC1); warped.setTo(cv::Scalar(0));
     cv::Mat tracking_valid(1080, 1920, CV_8UC1, cv::Scalar(0));
     uint count_threshold = 0;
     for (auto y = 0; y < 1080; y++)
         for (auto x = 0; x < 1920; x++)
         {
-            const int dest_x = x + round(fu.at<float>(y, x));
-            const int dest_y = y + round(fv.at<float>(y, x));
+            const cv::Point2f fflowatxy = fflow.at<cv::Point2f>(y, x);  
+            const int dest_x = x + round(fflowatxy.x);
+            const int dest_y = y + round(fflowatxy.y);
             if (dest_x < 0 || dest_x >= 1920 || dest_y < 0 || dest_y >= 1080)
                 continue;
-            const int back_x = dest_x + round(bu.at<float>(dest_y, dest_x));
-            const int back_y = dest_y + round(bv.at<float>(dest_y, dest_x));
+            const cv::Point2f bflowatxy = bflow.at<cv::Point2f>(y, x); 
+            const int back_x = dest_x + round(bflowatxy.x);
+            const int back_y = dest_y + round(bflowatxy.y);
             const float dist = sqrt((x - back_x) * (x - back_x) + (y - back_y) * (y - back_y));
             if (dist > backward_check_thresh)
             {
@@ -442,8 +456,10 @@ const uint sample_dist)
         if (sample_dist > 0)
             if (cover.at<uchar>(int(y / sample_dist), int(x / sample_dist)))
                 continue;
-        const int dest_x = x + round(fu.at<float>(y, x));
-        const int dest_y = y + round(fv.at<float>(y, x));
+        
+        const cv::Point2f fflowatxy = fflow.at<cv::Point2f>(y, x);  
+        const int dest_x = x + round(fflowatxy.x);
+        const int dest_y = y + round(fflowatxy.y);
         if (sample_dist > 0)
             cover.at<uchar>(int(y / sample_dist), int(x / sample_dist)) = 1;
         target_constraints.push_back(cv::Point3i(dest_x, dest_y, iv));
