@@ -1,0 +1,153 @@
+FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+ENV TZ=Europe/London
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN echo "deb http://security.ubuntu.com/ubuntu/ bionic-security main" >> /etc/apt/sources.list
+RUN apt update && apt-cache policy libssl1.0.0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \  
+    curl \
+    build-essential \
+    zlib1g-dev \
+    libncurses5-dev \
+    libgdbm-dev \
+    libnss3-dev \
+    libssl1.0-dev \
+    libreadline-dev \
+    libffi-dev \
+    libsqlite3-dev \
+    libbz2-dev \
+    git \ 
+    tk-dev \
+    unzip \
+    build-essential \
+    cmake \
+    git \
+    ffmpeg \
+    freeglut3 \
+    freeglut3-dev \
+    glew-utils \
+    libglew-dev \
+    libatlas-base-dev \
+    libboost-all-dev \
+    libgoogle-glog-dev \
+    libatlas-base-dev \
+    libeigen3-dev \
+    libsuitesparse-dev \
+    libgflags-dev \
+    libgoogle-glog-dev \
+    libhdf5-serial-dev \
+    libleveldb-dev \
+    liblmdb-dev \
+    libprotobuf-dev \
+    libsnappy-dev \
+    libx11-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libxrandr-dev \
+    libxi-dev \
+    libxmu-dev \
+    libblas-dev \ 
+    libxinerama-dev \
+    libxcursor-dev \
+    libglm-dev \
+    llvm-6.0 \
+    mesa-common-dev \
+    mesa-utils \
+    python-is-python3 \
+    software-properties-common \
+    libgflags-dev \
+    libgoogle-glog-dev \
+    liblmdb-dev \
+    xorg-dev && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt-get autoremove -y && apt-get autoclean -y
+
+RUN export LD_LIBRARY_PATH=/usr/local/ssl/lib/:$LD_LIBRARY_PATH >> ~/.bashrc
+RUN wget https://www.python.org/ftp/python/3.4.0/Python-3.4.0.tgz
+RUN tar -xf Python-3.4.0.tgz
+RUN cd Python-3.4.0 && ./configure --enable-optimizations --with-openssl && make -j8 && make altinstall
+
+RUN curl -O https://files.pythonhosted.org/packages/1a/04/d6f1159feaccdfc508517dba1929eb93a2854de729fa68da9d5c6b48fa00/setuptools-39.2.0.zip
+RUN unzip setuptools-39.2.0.zip
+RUN cd setuptools-39.2.0 && python3.4 setup.py install
+
+RUN curl -O https://files.pythonhosted.org/packages/ae/e8/2340d46ecadb1692a1e455f13f75e596d4eab3d11a57446f08259dee8f02/pip-10.0.1.tar.gz
+RUN tar -xf pip-10.0.1.tar.gz
+RUN cd pip-10.0.1 && python3.4 setup.py install
+
+RUN pip3.4 install grpcio==1.20.0 tensorflow==1.12.0 
+
+RUN pip3.4 install \
+    wheel \
+    opencv-python==3.4.1.15 \
+    scikit-image \
+    matplotlib \
+    numpy   
+
+# OPENCV
+ENV OPENCV_ROOT=/opt/opencv
+WORKDIR ${OPENCV_ROOT}
+RUN git clone -b 3.4.17 https://github.com/opencv/opencv.git .
+RUN mkdir build && \
+    cd build && \
+    cmake -D CMAKE_BUILD_TYPE=RELEASE \
+    -D WITH_FFMPEG=OFF \
+    -D WITH_CUDA=ON \
+    -D WITH_CUBLAS=ON \
+    -D WITH_GTEST=OFF \
+    -D WITH_TBB=ON \
+    -D WITH_V4L=ON \
+    -D ENABLE_FAST_MATH=1 \
+    -D CUDA_FAST_MATH=1 \
+    -D BUILD_SHARED_LIBS=ON \
+    -D WITH_CUBLAS=1 .. &&\
+    make all -j16 -w && \
+    make install
+ENV PATH=/opt/opencv/build/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/opencv/build/lib:${LD_LIBRARY_PATH}
+
+# CERES
+ENV CERES_ROOT=/opt/ceres
+WORKDIR ${CERES_ROOT}
+RUN git clone -b 1.13.0 https://ceres-solver.googlesource.com/ceres-solver.git . && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make all -j16 && \
+    make test && \
+    make install
+    
+# LIBIGL
+ENV LIBIGL_ROOT=/opt/libigl
+WORKDIR ${LIBIGL_ROOT}
+RUN git clone https://github.com/libigl/libigl.git . 
+RUN mkdir build && cd build && \
+    cmake .. && \
+    make all -j16
+    
+# FITADAM
+ENV MTC_ROOT=/opt/mtc-cv3
+RUN cd / && git clone https://github.com/IMCarlMoore/MonocularTotalCapture.git ${MTC_ROOT}
+WORKDIR ${MTC_ROOT}
+RUN bash ./download.sh    
+RUN export MESA_GL_VERSION_OVERRIDE=3.3 >> ~/.bashrc
+RUN cd FitAdam && mkdir build && cd build && cmake -D CUDA_USE_STATIC_CUDA_RUNTIME=OFF -D OpenCV_DIR=/opt/opencv/build .. && make all -j16
+
+# OPENPOSE
+ENV OPENPOSE_ROOT=/opt/openpose
+WORKDIR $OPENPOSE_ROOT
+RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler
+RUN git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose.git . && \
+    #sed -i 's/set(Caffe_known_gpu_archs "${KEPLER} ${MAXWELL} ${PASCAL} ${VOLTA} ${TURING} ${AMPERE}")/set(Caffe_known_gpu_archs "${KEPLER} ${MAXWELL} ${PASCAL} ${AMPERE}")/' /opt/openpose/cmake/Cuda.cmake && \
+    mkdir build && cd build && \
+    #cmake -DCaffe_INCLUDE_DIRS=$CAFFE_ROOT/build/install/include \
+    #      -DCaffe_LIBS=$CAFFE_ROOT/build/install/lib/libcaffe.so \
+    cmake -DBUILD_CAFFE=ON \
+          -DDOWNLOAD_BODY_COCO_MODEL=OFF \
+          -DDOWNLOAD_BODY_MPI_MODEL=OFF \
+          .. && \
+    make all -j16 && \
+    make install
+
+RUN mv /usr/bin/python3 /usr/bin/python3.bak
+RUN echo 'alias python3=python3.4' >> ~/.bashrc
