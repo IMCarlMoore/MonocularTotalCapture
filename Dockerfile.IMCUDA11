@@ -126,11 +126,11 @@ RUN mkdir build && cd build && \
     make all -j16
     
 # FITADAM
+RUN export MESA_GL_VERSION_OVERRIDE=3.3 >> ~/.bashrc
 RUN cd / && git clone https://github.com/IMCarlMoore/MonocularTotalCapture.git /opt/mtc-cv3
 ENV MTC_ROOT=/opt/mtc-cv3
 WORKDIR ${MTC_ROOT}
 RUN bash ./download.sh    
-RUN export MESA_GL_VERSION_OVERRIDE=3.3 >> ~/.bashrc
 RUN cd FitAdam && mkdir build && cd build && cmake -D CUDA_USE_STATIC_CUDA_RUNTIME=OFF -D OpenCV_DIR=/opt/opencv/build .. && make all -j16
 
 RUN mv /usr/bin/python3 /usr/bin/python3.bak

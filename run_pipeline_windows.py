@@ -22,14 +22,24 @@ def RunStages(args):
 
     # Run Stage1 in WSL
     if not os.path.exists(os.path.join(args.dataDir, sequenceName, 'raw_image')):
+        print('Running Stage 1...')
         os.system(fullStage1Command)
+    else:
+        print('Skipping Stage 1...')
 
     # Run Stage2 in Windows
     if not os.path.exists(os.path.join(args.dataDir, sequenceName, 'openpose_result')):
+        print('Running Stage 2...')
         os.system(runStage2BATCommand)
+    else:
+        print('Skipping Stage 2...')
 
     # Run Stage3 in WSL
-    os.system(fullStage3Command)
+    if not os.path.exists(os.path.join(args.dataDir, sequenceName, 'net_output')):
+        print('Running Stage 3...')
+        os.system(fullStage3Command)
+    else:
+        print('Skipping Stage 3...')
 
 def main():
     parser = argparse.ArgumentParser()
