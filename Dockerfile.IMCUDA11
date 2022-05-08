@@ -126,28 +126,12 @@ RUN mkdir build && cd build && \
     make all -j16
     
 # FITADAM
-ENV MTC_ROOT=/opt/mtc-cv3
 RUN cd / && git clone https://github.com/IMCarlMoore/MonocularTotalCapture.git /opt/mtc-cv3
+ENV MTC_ROOT=/opt/mtc-cv3
 WORKDIR ${MTC_ROOT}
 RUN bash ./download.sh    
 RUN export MESA_GL_VERSION_OVERRIDE=3.3 >> ~/.bashrc
 RUN cd FitAdam && mkdir build && cd build && cmake -D CUDA_USE_STATIC_CUDA_RUNTIME=OFF -D OpenCV_DIR=/opt/opencv/build .. && make all -j16
-
-# OPENPOSE
-#ENV OPENPOSE_ROOT=/opt/openpose
-#WORKDIR $OPENPOSE_ROOT
-#RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler
-#RUN git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose.git . && \
-#    #sed -i 's/set(Caffe_known_gpu_archs "${KEPLER} ${MAXWELL} ${PASCAL} ${VOLTA} ${TURING} ${AMPERE}")/set(Caffe_known_gpu_archs "${KEPLER} ${MAXWELL} ${PASCAL} ${AMPERE}")/' /opt/openpose/cmake/Cuda.cmake && \
-#    mkdir build && cd build && \
-#    #cmake -DCaffe_INCLUDE_DIRS=$CAFFE_ROOT/build/install/include \
-#    #      -DCaffe_LIBS=$CAFFE_ROOT/build/install/lib/libcaffe.so \
-#    cmake -DBUILD_CAFFE=ON \
-#          -DDOWNLOAD_BODY_COCO_MODEL=OFF \
-#          -DDOWNLOAD_BODY_MPI_MODEL=OFF \
-#          .. && \
-#    make all -j16 && \
-#    make install
 
 RUN mv /usr/bin/python3 /usr/bin/python3.bak
 RUN echo 'alias python3=python3.4' >> ~/.bashrc

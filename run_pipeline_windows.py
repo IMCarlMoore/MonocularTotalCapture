@@ -14,9 +14,15 @@ def RunStages(args):
     sequenceName = 'example_dance'
     dockerWSLRunCommand = f'wsl docker run --gpus all -v {dataDirWSL}:/data -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY -e XAUTHORITY -e NVIDIA_DRIVER_CAPABILITIES=all mtc'
     runStage1WSLCommand = f'sh ./run_pipeline_stage1.sh {sequenceName} /data'
+    runStage2BATCommand = f'run_pipeline_stage2_Win.bat {args.pathToOpenposeDir} {os.path.join(args.dataDir, sequenceName)} '
 
     fullStage1Command = dockerWSLRunCommand + ' ' + runStage1WSLCommand
-    os.system(fullStage1Command)
+
+    # Run Stage1 in WSL
+    # os.system(fullStage1Command)
+
+    # Run Stage2 in Windows
+    os.system(runStage2BATCommand)
 
 def main():
     parser = argparse.ArgumentParser()
