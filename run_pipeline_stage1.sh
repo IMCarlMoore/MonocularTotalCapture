@@ -17,12 +17,6 @@ fi
 
 echo "Using dataDir: " $dataDir
 
-# Assume that you already have a video in $dataDir/(seqName)/(seqName).mp4
-#dataDir=./data/
-
-# Assume that you already have a video in $dataDir/(seqName)/(seqName).mp4 
-dataDir=./data/
-
 # convert to absolute path
 MTCDir=$(readlink -f .)
 dataDir=$(readlink -f $dataDir)

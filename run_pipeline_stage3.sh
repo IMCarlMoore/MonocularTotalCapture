@@ -17,12 +17,6 @@ fi
 
 echo "Using dataDir: " $dataDir
 
-# Assume that you already have a video in $dataDir/(seqName)/(seqName).mp4
-#dataDir=./data/
-
-# Assume that you already have a video in $dataDir/(seqName)/(seqName).mp4 
-dataDir=./data/
-
 # convert to absolute path
 MTCDir=$(readlink -f .)
 dataDir=$(readlink -f $dataDir)
@@ -35,7 +29,7 @@ python3 POF/collect_openpose.py -n $seqName -r $dataDir/$seqName -c $numFrame
 # run POF generation code
 cd POF
 if [ ! -d $dataDir/$seqName/net_output/ ]; then
-	python3 save_total_sequence.py -s $seqName -p $dataDir/$seqName $upperBody
+	python3.4 save_total_sequence.py -s $seqName -p $dataDir/$seqName $upperBody
 	# python3 save_total_sequence.py -s $seqName -p $dataDir/$seqName --end-index 10 $upperBody
 else
 	echo "POF results exist. Skip POF generation."
