@@ -15,14 +15,21 @@ def RunStages(args):
     dockerWSLRunCommand = f'wsl docker run --gpus all -v {dataDirWSL}:/data -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY -e XAUTHORITY -e NVIDIA_DRIVER_CAPABILITIES=all mtc'
     runStage1WSLCommand = f'sh ./run_pipeline_stage1.sh {sequenceName} /data'
     runStage2BATCommand = f'run_pipeline_stage2_Win.bat {args.pathToOpenposeDir} {os.path.join(args.dataDir, sequenceName)} '
+    runStage3WSLCommand = f'sh ./run_pipeline_stage3.sh {sequenceName} /data'
 
     fullStage1Command = dockerWSLRunCommand + ' ' + runStage1WSLCommand
+    fullStage3Command = dockerWSLRunCommand + ' ' + runStage3WSLCommand
 
     # Run Stage1 in WSL
-    # os.system(fullStage1Command)
+    if not os.path.exists(os.path.join(args.dataDir, sequenceName, 'raw_image')):
+        os.system(fullStage1Command)
 
     # Run Stage2 in Windows
-    os.system(runStage2BATCommand)
+    if not os.path.exists(os.path.join(args.dataDir, sequenceName, 'openpose_result')):
+        os.system(runStage2BATCommand)
+
+    # Run Stage3 in WSL
+    os.system(fullStage3Command)
 
 def main():
     parser = argparse.ArgumentParser()

@@ -24,7 +24,7 @@ dataDir=$(readlink -f $dataDir)
 # merge openpose results into a single file
 cd $MTCDir
 numFrame=$(ls $dataDir/$seqName/openpose_result/$seqName_* | wc -l)
-python3 POF/collect_openpose.py -n $seqName -r $dataDir/$seqName -c $numFrame
+python3.4 POF/collect_openpose.py -n $seqName -r $dataDir/$seqName -c $numFrame
 
 # run POF generation code
 cd POF
